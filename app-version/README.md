@@ -136,5 +136,8 @@ Typically this expands `APP_VERSION` inside deployment manifests.
 ## Release
 Tag a version (e.g. `v1`) and consumers pin to it: `cloudhumans/actions/app-version@v1`.
 
+## Language
+This project uses English exclusively for documentation, code comments, variable names, commit messages, and issues/PR discussions.
+
 ---
 Contributions welcome.

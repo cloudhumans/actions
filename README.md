@@ -1,33 +1,33 @@
 # CloudHumans Reusable GitHub Actions
 
-Monorepo de actions reutilizáveis da organização CloudHumans. Cada action vive em um subdiretório na raiz e pode ser versionada via tags (`v1`, `v2`, etc.).
+Monorepo containing reusable GitHub Actions for the CloudHumans organization. Each action lives in its own subdirectory at the repository root and is versioned via tags (`v1`, `v2`, etc.).
 
-## Objetivo
-Padronizar lógica repetitiva de pipelines (versão, processamento de templates, etc.) reduzindo boilerplate e risco de divergência entre repositórios.
+## Goal
+Standardize repeated pipeline logic (versioning, template processing, etc.) to reduce boilerplate and the risk of divergence across repositories.
 
-## Estrutura
+## Structure
 
 ```
 actions/
-  app-version/        # Action que gera APP_VERSION + (opcional) processa templates
-  .github/workflows/  # Testes automatizados das actions
-  README.md           # Este arquivo
+  app-version/        # Action that generates APP_VERSION and (optionally) processes templates
+  .github/workflows/  # Automated tests for the actions
+  README.md           # This file
 ```
 
-Cada pasta de action contém:
-- `action.yml` (definição composite)
-- `README.md` específico
-- Scripts auxiliares
+Each action directory contains:
+- `action.yml` (composite action definition)
+- `README.md` (action‑specific docs)
+- Helper scripts (if any)
 
-## Actions Disponíveis
+## Available Actions
 
-| Action | Caminho | Descrição |
-|--------|---------|-----------|
-| app-version | `app-version/` | Calcula versão baseada em arquivo/override + metadata do commit e opcionalmente expande variáveis em templates. |
+| Action | Path | Description |
+|--------|------|-------------|
+| app-version | `app-version/` | Computes a version from file/override + commit metadata and optionally expands variables inside templates. |
 
-## Como Consumir
+## How to Use
 
-Referencie usando `uses: cloudhumans/actions/<pasta>@v1` após publicar a tag:
+Reference an action with `uses: cloudhumans/actions/<folder>@v1` after publishing the tag:
 
 ```yaml
 - name: Compute version
@@ -37,30 +37,33 @@ Referencie usando `uses: cloudhumans/actions/<pasta>@v1` após publicar a tag:
     format: "{base}-{sha7}"
 ```
 
-## Desenvolvimento
+## Development Workflow
 
-1. Adicione/edite a action em um novo diretório.
-2. Crie/atualize testes em `.github/workflows/*` garantindo cobertura mínima (happy path + edge cases).
-3. Abra PR.
-4. Após merge: crie/atualize tag major (`git tag v1 && git push origin v1`).
+1. Add or edit an action in a new/existing directory.
+2. Create / update tests under `.github/workflows/*` ensuring minimal coverage (happy path + edge cases).
+3. Open a PR.
+4. After merge: create/update the major tag (`git tag v1 && git push origin v1`).
 
-## Versionamento
+## Versioning
 
-Siga SemVer sempre que possível. Ao quebrar compatibilidade, incremente major (`v2`). Mantenha a tag major apontando para a última minor patch estável.
+Follow SemVer whenever possible. When introducing breaking changes, bump the major tag (`v2`). Keep the major tag pointing to the latest stable minor/patch.
 
-## Boas Práticas
-- Evite dependências desnecessárias (ações composite puras em bash/python simples).
-- Saídas (outputs) claras e documentadas.
-- Falhar cedo com mensagens (`::error`).
-- Testes rápidos (< 1 min) para feedback contínuo.
+## Best Practices
+- Avoid unnecessary dependencies (prefer pure composite actions using simple bash/python).
+- Clear, documented outputs.
+- Fail fast with meaningful `::error` messages.
+- Keep tests fast (< 1 min) for continuous feedback.
 
-## Roadmap Geral
-- Action para build/publish Docker padronizado
-- Action para validação de manifests
-- Action para bump semver automático
+## Roadmap
+- Standardized Docker build/publish action
+- Manifest validation action
+- Automatic semver bump action
 
-## Contribuições
-PRs e issues são bem-vindos. Descreva claramente a motivação e impacto.
+## Contributing
+PRs and issues are welcome. Clearly describe motivation and impact.
+
+## Language Policy
+All documentation, commit messages, code comments, identifiers, and future additions must be written in English only. This keeps the codebase consistent and maximizes tooling (e.g. Copilot) effectiveness.
 
 ---
 CloudHumans Engineering
