@@ -63,6 +63,9 @@ outputs:
   format_used:
     description: "Template format applied."
     value: ${{ steps.compute.outputs.format_used }}
+  full_sha:
+    description: "Full 40-char commit SHA."
+    value: ${{ steps.compute.outputs.full_sha }}
 
 runs:
   using: "composite"
@@ -156,11 +159,14 @@ runs:
           echo "short_sha=$SHORT_SHA7"
           echo "short_sha8=$SHORT_SHA8"
           echo "format_used=$FORMAT"
+          echo "full_sha=$FULL_SHA"
         } >> "$GITHUB_OUTPUT"
 
         if [ "$EXPORT_ENV" = "true" ]; then
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
         fi
+        # Always export to current shell environment for subsequent steps in this composite
+        export APP_VERSION="$APP_VERSION"
 
         if [ "$WRITE_SUMMARY" = "true" ]; then
           {

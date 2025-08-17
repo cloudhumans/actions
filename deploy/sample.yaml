@@ -1,0 +1,5 @@
+# Sample template used only for automated tests of app-version action
+# Placeholders below are replaced by process_templates.py when the action runs
+image: myapp:$APP_VERSION
+tag: ${APP_VERSION}
+other: $NOT_DEFINED

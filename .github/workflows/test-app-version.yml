@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run action with override
         id: version
         uses: ./app-version
@@ -49,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run with fallback
         id: version
         uses: ./app-version
@@ -67,6 +71,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Write version
         run: echo '2.0.0' > version
       - name: Run with date format
@@ -84,15 +90,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Prepare templates
         run: |
-          mkdir -p deploy
-          cat > deploy/sample.yaml <<'EOF'
-          image: myapp:$APP_VERSION
-          tag: ${APP_VERSION}
-          other: $NOT_DEFINED
-          EOF
           echo '3.1.4' > version
+          echo 'Existing template (first lines):'
+          sed -n '1,10p' deploy/sample.yaml
       - name: Run with template processing
         id: version
         uses: ./app-version
@@ -105,14 +109,20 @@ jobs:
           set -euo pipefail
           SHORT_SHA=${GITHUB_SHA:0:7}
           EXPECT="3.1.4-${SHORT_SHA}"
-          grep -q "image: myapp:${EXPECT}" deploy/sample.yaml || { echo 'image placeholder not replaced'; cat deploy/sample.yaml; exit 1; }
-          grep -q "tag: ${EXPECT}" deploy/sample.yaml || { echo 'brace placeholder not replaced'; exit 1; }
-          grep -q "other: $" deploy/sample.yaml || { echo 'Unset var not blanked'; cat deploy/sample.yaml; exit 1; }
+          echo '--- sample.yaml after processing ---'
+          sed -n '1,50p' deploy/sample.yaml
+          echo '-----------------------------------'
+          # Exact line matches (anchor ^ and $) to avoid false positives with trailing spaces
+          grep -E "^image: myapp:${EXPECT}$" deploy/sample.yaml || { echo 'image placeholder not replaced'; exit 1; }
+          grep -E "^tag: ${EXPECT}$" deploy/sample.yaml || { echo 'brace placeholder not replaced'; exit 1; }
+          grep -E "^other:\s*$" deploy/sample.yaml || { echo 'Unset var not blanked'; exit 1; }
   python-unit:
     name: python unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run unit tests for process_templates
         run: |
           set -euo pipefail
