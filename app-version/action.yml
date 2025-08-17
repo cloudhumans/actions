@@ -1,0 +1,187 @@
+name: "App Version"
+description: "Compute APP_VERSION from a base version file or override plus Git metadata."
+author: "CloudHumans"
+branding:
+  icon: "hash"
+  color: "blue"
+
+inputs:
+  version_file:
+    description: "File containing the base version string."
+    required: false
+    default: "version"
+  format:
+    description: "Version template. Placeholders: {base} {sha7} {sha8} {sha} {date} {datetime}"
+    required: false
+    default: "{base}-{sha7}"
+  fail_if_missing:
+    description: "Fail if version file is missing (and no override provided)."
+    required: false
+    default: "true"
+  export_env:
+    description: "Export APP_VERSION to GITHUB_ENV."
+    required: false
+    default: "true"
+  trim:
+    description: "Trim whitespace/newlines from the base version."
+    required: false
+    default: "true"
+  base_override:
+    description: "If provided, ignores the version file and uses this as the base."
+    required: false
+    default: ""
+  fallback_base:
+    description: "Used when file missing, fail_if_missing=false, and no override provided."
+    required: false
+    default: "0.0.0"
+  write_summary:
+    description: "Write a markdown summary to GITHUB_STEP_SUMMARY."
+    required: false
+    default: "true"
+  process_templates:
+    description: "If true, run the bundled process_templates.py after computing APP_VERSION."
+    required: false
+    default: "false"
+  templates_glob:
+    description: "Glob pattern for files to process when process_templates=true."
+    required: false
+    default: "deploy/**/*.yaml"
+
+outputs:
+  app_version:
+    description: "Final computed version string."
+    value: ${{ steps.compute.outputs.app_version }}
+  base_version:
+    description: "Base version before formatting."
+    value: ${{ steps.compute.outputs.base_version }}
+  short_sha:
+    description: "7-character commit SHA."
+    value: ${{ steps.compute.outputs.short_sha }}
+  short_sha8:
+    description: "8-character commit SHA."
+    value: ${{ steps.compute.outputs.short_sha8 }}
+  format_used:
+    description: "Template format applied."
+    value: ${{ steps.compute.outputs.format_used }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: compute
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        VERSION_FILE="${{ inputs.version_file }}"
+        FORMAT="${{ inputs.format }}"
+        FAIL_IF_MISSING="${{ inputs.fail_if_missing }}"
+        EXPORT_ENV="${{ inputs.export_env }}"
+        TRIM="${{ inputs.trim }}"
+        BASE_OVERRIDE="${{ inputs.base_override }}"
+        FALLBACK_BASE="${{ inputs.fallback_base }}"
+        WRITE_SUMMARY="${{ inputs.write_summary }}"
+        PROCESS_TEMPLATES="${{ inputs.process_templates }}"
+        TEMPLATES_GLOB="${{ inputs.templates_glob }}"
+
+        echo "[app-version] Inputs:"
+        echo "  version_file=$VERSION_FILE"
+        echo "  format=$FORMAT"
+        echo "  fail_if_missing=$FAIL_IF_MISSING"
+        echo "  export_env=$EXPORT_ENV"
+        echo "  trim=$TRIM"
+        echo "  write_summary=$WRITE_SUMMARY"
+        echo "  process_templates=$PROCESS_TEMPLATES"
+        echo "  templates_glob=$TEMPLATES_GLOB"
+        if [ -n "$BASE_OVERRIDE" ]; then
+          echo "  base_override (provided)=$BASE_OVERRIDE"
+        fi
+        echo "  fallback_base=$FALLBACK_BASE"
+
+        if [ -n "$BASE_OVERRIDE" ]; then
+          BASE_VERSION="$BASE_OVERRIDE"
+        else
+          if [ -f "$VERSION_FILE" ]; then
+            BASE_VERSION="$(cat "$VERSION_FILE")"
+          else
+            if [ "$FAIL_IF_MISSING" = "true" ]; then
+              echo "::error file=$VERSION_FILE::Version file not found and fail_if_missing=true"
+              exit 1
+            else
+              echo "::warning file=$VERSION_FILE::Version file not found, using fallback '${FALLBACK_BASE}'"
+              BASE_VERSION="$FALLBACK_BASE"
+            fi
+          fi
+        fi
+
+        if [ "$TRIM" = "true" ]; then
+          BASE_VERSION="$(echo "$BASE_VERSION" | tr -d ' \t\n\r')"
+        fi
+
+        if [ -z "$BASE_VERSION" ]; then
+          echo "::error ::Base version resolved to empty string"
+          exit 1
+        fi
+
+        FULL_SHA="${GITHUB_SHA}"
+        SHORT_SHA7="${FULL_SHA:0:7}"
+        SHORT_SHA8="${FULL_SHA:0:8}"
+        DATE_UTC="$(date -u +%Y%m%d)"
+        DATETIME_UTC="$(date -u +%Y%m%d%H%M%S)"
+
+        APP_VERSION="$FORMAT"
+        APP_VERSION="${APP_VERSION//\{base\}/$BASE_VERSION}"
+        APP_VERSION="${APP_VERSION//\{sha7\}/$SHORT_SHA7}"
+        APP_VERSION="${APP_VERSION//\{sha8\}/$SHORT_SHA8}"
+        APP_VERSION="${APP_VERSION//\{sha\}/$FULL_SHA}"
+        APP_VERSION="${APP_VERSION//\{date\}/$DATE_UTC}"
+        APP_VERSION="${APP_VERSION//\{datetime\}/$DATETIME_UTC}"
+
+        APP_VERSION="$(echo "$APP_VERSION" | tr -d ' \t\n\r')"
+
+        if [ -z "$APP_VERSION" ]; then
+          echo "::error ::Final APP_VERSION is empty"
+          exit 1
+        fi
+
+        echo "::notice title=APP_VERSION::$APP_VERSION"
+        echo "[app-version] BASE_VERSION=$BASE_VERSION"
+        echo "[app-version] SHORT_SHA7=$SHORT_SHA7"
+        echo "[app-version] SHORT_SHA8=$SHORT_SHA8"
+        echo "[app-version] FORMAT_USED=$FORMAT"
+        echo "[app-version] APP_VERSION=$APP_VERSION"
+
+        {
+          echo "app_version=$APP_VERSION"
+          echo "base_version=$BASE_VERSION"
+          echo "short_sha=$SHORT_SHA7"
+          echo "short_sha8=$SHORT_SHA8"
+          echo "format_used=$FORMAT"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ "$EXPORT_ENV" = "true" ]; then
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+        fi
+
+        if [ "$WRITE_SUMMARY" = "true" ]; then
+          {
+            echo "### APP_VERSION"
+            echo
+            echo "\`$APP_VERSION\`"
+            echo
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Base version | $BASE_VERSION |"
+            echo "| Format | $FORMAT |"
+            echo "| Short SHA (7) | $SHORT_SHA7 |"
+            echo "| Short SHA (8) | $SHORT_SHA8 |"
+            echo "| Full SHA | $FULL_SHA |"
+            echo "| Date (UTC) | $DATE_UTC |"
+            echo "| Datetime (UTC) | $DATETIME_UTC |"
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        if [ "$PROCESS_TEMPLATES" = "true" ]; then
+          echo "[app-version] Processing templates with glob '$TEMPLATES_GLOB'"
+          # Use python explicitly to avoid needing exec bit changes by user
+          python "$GITHUB_ACTION_PATH/process_templates.py" "$TEMPLATES_GLOB"
+        fi

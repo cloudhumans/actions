@@ -1,0 +1,125 @@
+name: Test App Version Action
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  default:
+    name: default inputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create version file
+        run: |
+          echo '1.2.3 ' > version
+      - name: Run action (default)
+        id: version
+        uses: ./app-version
+      - name: Assertions
+        run: |
+          set -euo pipefail
+          EXP_BASE=1.2.3
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          echo "Computed: ${{ steps.version.outputs.app_version }}"
+          [[ "${{ steps.version.outputs.base_version }}" == "$EXP_BASE" ]] || { echo 'Base version mismatch'; exit 1; }
+          [[ "${{ steps.version.outputs.app_version }}" == "${EXP_BASE}-${SHORT_SHA}" ]] || { echo 'APP_VERSION mismatch'; exit 1; }
+  override:
+    name: base_override
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run action with override
+        id: version
+        uses: ./app-version
+        with:
+          base_override: "9.9.9"
+          format: "{base}-{sha7}"
+      - name: Assert override
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          [[ "${{ steps.version.outputs.app_version }}" == "9.9.9-${SHORT_SHA}" ]] || exit 1
+  fallback:
+    name: fallback when file missing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run with fallback
+        id: version
+        uses: ./app-version
+        with:
+          version_file: missing-file
+          fail_if_missing: false
+          fallback_base: 0.0.0
+          format: "{base}-{sha7}"
+      - name: Assert fallback
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          [[ "${{ steps.version.outputs.app_version }}" == "0.0.0-${SHORT_SHA}" ]] || exit 1
+  placeholders:
+    name: date/datetime placeholders
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write version
+        run: echo '2.0.0' > version
+      - name: Run with date format
+        id: version
+        uses: ./app-version
+        with:
+          format: "{base}-{date}-{sha7}"
+      - name: Assert pattern
+        run: |
+          set -euo pipefail
+          VAL='${{ steps.version.outputs.app_version }}'
+          [[ $VAL =~ ^2\.0\.0-[0-9]{8}-[0-9a-f]{7}$ ]] || { echo "Pattern mismatch: $VAL"; exit 1; }
+  templates:
+    name: template processing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare templates
+        run: |
+          mkdir -p deploy
+          cat > deploy/sample.yaml <<'EOF'
+          image: myapp:$APP_VERSION
+          tag: ${APP_VERSION}
+          other: $NOT_DEFINED
+          EOF
+          echo '3.1.4' > version
+      - name: Run with template processing
+        id: version
+        uses: ./app-version
+        with:
+          process_templates: true
+          templates_glob: 'deploy/**/*.yaml'
+          format: '{base}-{sha7}'
+      - name: Assert template substitution
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          EXPECT="3.1.4-${SHORT_SHA}"
+          grep -q "image: myapp:${EXPECT}" deploy/sample.yaml || { echo 'image placeholder not replaced'; cat deploy/sample.yaml; exit 1; }
+          grep -q "tag: ${EXPECT}" deploy/sample.yaml || { echo 'brace placeholder not replaced'; exit 1; }
+          grep -q "other: $" deploy/sample.yaml || { echo 'Unset var not blanked'; cat deploy/sample.yaml; exit 1; }
+  python-unit:
+    name: python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests for process_templates
+        run: |
+          set -euo pipefail
+          export APP_VERSION='9.9.9-abc1234'
+          echo 'value=$APP_VERSION and braces ${APP_VERSION} missing $NOPE end' > test_env.txt
+          python app-version/process_templates.py 'test_env.txt'
+          cat test_env.txt
+          grep -q 'value=9.9.9-abc1234 and braces 9.9.9-abc1234 missing  end' test_env.txt
+          # Ensure unset removed
+          ! grep -q '\$NOPE' test_env.txt
