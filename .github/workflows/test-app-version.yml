@@ -101,7 +101,6 @@ jobs:
         id: version
         uses: ./app-version
         with:
-          process_templates: true
           templates_glob: 'deploy/**/*.yaml'
           format: '{base}-{sha7}'
       - name: Assert template substitution
@@ -116,6 +115,56 @@ jobs:
           grep -E "^image: myapp:${EXPECT}$" deploy/sample.yaml || { echo 'image placeholder not replaced'; exit 1; }
           grep -E "^tag: ${EXPECT}$" deploy/sample.yaml || { echo 'brace placeholder not replaced'; exit 1; }
           grep -E "^other:\s*$" deploy/sample.yaml || { echo 'Unset var not blanked'; exit 1; }
+  templates-disabled:
+    name: template processing disabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare templates
+        run: |
+          echo '4.0.0' > version
+          cp deploy/sample.yaml deploy/sample_disabled.yaml
+      - name: Run action with templates disabled (empty glob)
+        id: version
+        uses: ./app-version
+        with:
+          templates_glob: ''
+          format: '{base}-{sha7}'
+      - name: Assert no substitution happened
+        run: |
+          set -euo pipefail
+          # Placeholders should remain because processing disabled
+          grep -q 'image: myapp:$APP_VERSION' deploy/sample_disabled.yaml
+          grep -q 'tag: ${APP_VERSION}' deploy/sample_disabled.yaml
+  templates-multiple:
+    name: multiple glob patterns
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare multiple template locations
+        run: |
+          echo '5.5.5' > version
+          mkdir -p extra
+          cp deploy/sample.yaml extra/another.yaml
+      - name: Run action with multiple patterns
+        id: version
+        uses: ./app-version
+        with:
+          templates_glob: 'deploy/**/*.yaml,extra/*.yaml'
+          format: '{base}-{sha7}'
+      - name: Assert both locations processed
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA:0:7}
+          EXPECT="5.5.5-${SHORT_SHA}"
+          grep -E "^image: myapp:${EXPECT}$" deploy/sample.yaml
+          grep -E "^tag: ${EXPECT}$" deploy/sample.yaml
+          grep -E "^image: myapp:${EXPECT}$" extra/another.yaml
+          grep -E "^tag: ${EXPECT}$" extra/another.yaml
   python-unit:
     name: python unit tests
     runs-on: ubuntu-latest

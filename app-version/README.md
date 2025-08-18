@@ -26,8 +26,7 @@ Centralizing version logic avoids duplicating shell snippets across repositories
 | base_override | (empty) | No | Overrides reading from file entirely. |
 | fallback_base | `0.0.0` | No | Used if file missing AND `fail_if_missing=false` AND no override. |
 | write_summary | `true` | No | Append markdown summary (table) to job summary. |
-| process_templates | `false` | No | Run env substitution in files after computing version. |
-| templates_glob | `deploy/**/*.yaml` | No | Glob used if `process_templates=true`. |
+| templates_glob | `deploy/**/*.yaml` | No | If non-empty, one or more glob patterns (space/comma/semicolon separated) processed with env substitution; set empty to skip. |
 
 ## Placeholders
 | Placeholder | Meaning |
@@ -47,6 +46,7 @@ Centralizing version logic avoids duplicating shell snippets across repositories
 | short_sha | 7-char SHA |
 | short_sha8 | 8-char SHA |
 | format_used | Template actually applied |
+| full_sha | Full 40-char commit SHA |
 
 ## Basic Usage
 ```yaml
@@ -109,12 +109,18 @@ Use:
     format: "{base}-{sha7}"
     export_env: true
     write_summary: true
-    process_templates: true
-    templates_glob: "deploy/**/*.yaml"
+  # To skip template processing entirely:
+  # templates_glob: ""
+  templates_glob: "deploy/**/*.yaml"
+
+  # Multiple patterns example (any separator: space / comma / semicolon):
+  # templates_glob: "deploy/**/*.yaml charts/*/values.yaml extra/*.yml"
+  # templates_glob: "deploy/**/*.yaml,charts/*/values.yaml,extra/*.yml"
+  # templates_glob: "deploy/**/*.yaml;charts/*/values.yaml;extra/*.yml"
 ```
 
 ## Template Processing
-When `process_templates=true`, the script scans the glob and replaces:
+If `templates_glob` is non-empty, it's split on spaces, commas or semicolons into multiple glob patterns. Each pattern's matches are processed (deduplicated). It replaces:
 | Pattern | Replaced With |
 |---------|---------------|
 | `$VAR` | Value or empty if unset |
@@ -126,6 +132,8 @@ Typically this expands `APP_VERSION` inside deployment manifests.
 - Fails if final `APP_VERSION` empty.
 - Trims whitespace when `trim=true`.
 - Unset env vars become empty strings in template processing.
+- Set `templates_glob: ""` to disable template processing.
+- Multiple patterns are allowed; duplicates are processed only once.
 
 ## Roadmap
 - Optional semver enforcement

@@ -65,15 +65,40 @@ def process_files(file_pattern):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        file_pattern = sys.argv[1]
+        patterns = sys.argv[1:]
     else:
-        file_pattern = "deploy/**/*.yaml"
-    
-    # Print environment variables for debugging
-    print(f"Processing files matching pattern: {file_pattern}")
-    print("With the following environment variables:")
+        patterns = ["deploy/**/*.yaml"]
+
+    print("Processing file patterns:")
+    for p in patterns:
+        print(f"  - {p}")
+
+    print("With the following environment variables (APP_*):")
     for key, value in os.environ.items():
         if key.startswith("APP_"):
             print(f"  {key}={value}")
-    
-    process_files(file_pattern)
+
+    # Collect all files from all patterns (deduplicated)
+    all_files = []
+    for pattern in patterns:
+        matched = glob.glob(pattern, recursive=True)
+        for f in matched:
+            if f not in all_files:
+                all_files.append(f)
+
+    if not all_files:
+        print("No files found to process")
+        sys.exit(0)
+
+    print(f"Total unique files to process: {len(all_files)}")
+    for file_path in all_files:
+        try:
+            print(f"Processing: {file_path}")
+            with open(file_path, 'r') as f:
+                content = f.read()
+            processed_content = replace_env_vars(content)
+            with open(file_path, 'w') as f:
+                f.write(processed_content)
+            print(f" -> Processed: {file_path}")
+        except Exception as e:
+            print(f"Error processing {file_path}: {str(e)}")

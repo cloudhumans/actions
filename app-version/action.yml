@@ -38,12 +38,8 @@ inputs:
     description: "Write a markdown summary to GITHUB_STEP_SUMMARY."
     required: false
     default: "true"
-  process_templates:
-    description: "If true, run the bundled process_templates.py after computing APP_VERSION."
-    required: false
-    default: "false"
   templates_glob:
-    description: "Glob pattern for files to process when process_templates=true."
+    description: "If non-empty, one or multiple glob patterns (space/comma/semicolon separated) for env substitution. Leave blank to skip."
     required: false
     default: "deploy/**/*.yaml"
 
@@ -83,7 +79,6 @@ runs:
         BASE_OVERRIDE="${{ inputs.base_override }}"
         FALLBACK_BASE="${{ inputs.fallback_base }}"
         WRITE_SUMMARY="${{ inputs.write_summary }}"
-        PROCESS_TEMPLATES="${{ inputs.process_templates }}"
         TEMPLATES_GLOB="${{ inputs.templates_glob }}"
 
         echo "[app-version] Inputs:"
@@ -93,7 +88,6 @@ runs:
         echo "  export_env=$EXPORT_ENV"
         echo "  trim=$TRIM"
         echo "  write_summary=$WRITE_SUMMARY"
-        echo "  process_templates=$PROCESS_TEMPLATES"
         echo "  templates_glob=$TEMPLATES_GLOB"
         if [ -n "$BASE_OVERRIDE" ]; then
           echo "  base_override (provided)=$BASE_OVERRIDE"
@@ -186,8 +180,15 @@ runs:
           } >> "$GITHUB_STEP_SUMMARY"
         fi
 
-        if [ "$PROCESS_TEMPLATES" = "true" ]; then
-          echo "[app-version] Processing templates with glob '$TEMPLATES_GLOB'"
-          # Use python explicitly to avoid needing exec bit changes by user
-          python "$GITHUB_ACTION_PATH/process_templates.py" "$TEMPLATES_GLOB"
+        if [ -n "$TEMPLATES_GLOB" ]; then
+          echo "[app-version] Raw templates_glob string: '$TEMPLATES_GLOB'"
+          # Normalize separators (comma / semicolon / newline -> space)
+          NORMALIZED=$(echo "$TEMPLATES_GLOB" | tr ',;' '  ')
+          # Collapse multiple spaces
+          NORMALIZED=$(echo "$NORMALIZED" | tr '\n' ' ' | tr -s ' ')
+          echo "[app-version] Normalized patterns: $NORMALIZED"
+          # Build python arg list (word splitting safe after normalization)
+          python "$GITHUB_ACTION_PATH/process_templates.py" $NORMALIZED
+        else
+          echo "[app-version] Template processing skipped (empty templates_glob)"
         fi

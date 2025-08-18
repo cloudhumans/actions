@@ -1,0 +1,14 @@
+extends: default
+
+rules:
+  line-length:
+    max: 140
+    level: warning
+  truthy: disable
+  document-start: disable
+
+# Treat these as YAML as well
+yaml-files:
+  - '*.yml'
+  - '*.yaml'
+  - 'app-version/action.yml'
