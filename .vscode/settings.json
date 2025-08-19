@@ -3,7 +3,7 @@
     "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.{yml,yaml}",
     "https://json.schemastore.org/github-action.json": "app-version/action.yml"
   },
-  "yaml.validate": false,
+  "yaml.validate": true,
   "files.associations": {
     "action.yml": "yaml"
   }

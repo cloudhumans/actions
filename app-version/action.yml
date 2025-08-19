@@ -11,7 +11,7 @@ inputs:
     required: false
     default: "version"
   format:
-    description: "Version template. Placeholders: {base} {sha7} {sha8} {sha} {date} {datetime}"
+    description: "Version template. Placeholders: {base} {sha7} {sha8} {sha} {date} {datetime} {run_number}"
     required: false
     default: "{base}-{sha7}"
   fail_if_missing:
@@ -132,6 +132,7 @@ runs:
         APP_VERSION="${APP_VERSION//\{sha\}/$FULL_SHA}"
         APP_VERSION="${APP_VERSION//\{date\}/$DATE_UTC}"
         APP_VERSION="${APP_VERSION//\{datetime\}/$DATETIME_UTC}"
+        APP_VERSION="${APP_VERSION//\{run_number\}/$GITHUB_RUN_NUMBER}"
 
         APP_VERSION="$(echo "$APP_VERSION" | tr -d ' \t\n\r')"
 

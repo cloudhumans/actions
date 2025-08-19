@@ -19,7 +19,7 @@ Centralizing version logic avoids duplicating shell snippets across repositories
 | Name | Default | Required | Description |
 |------|---------|----------|-------------|
 | version_file | `version` | No | File containing the base version string (ignored if `base_override` provided). |
-| format | `{base}-{sha7}` | No | Template placeholders: `{base} {sha7} {sha8} {sha} {date} {datetime}` |
+| format | `{base}-{sha7}` | No | Template placeholders: `{base} {sha7} {sha8} {sha} {date} {datetime} {run_number}` |
 | fail_if_missing | `true` | No | Fail when file missing and no override. |
 | export_env | `true` | No | Export `APP_VERSION` to `$GITHUB_ENV`. |
 | trim | `true` | No | Trim whitespace/newlines around base version. |
@@ -37,6 +37,7 @@ Centralizing version logic avoids duplicating shell snippets across repositories
 | `{sha}` | Full commit SHA |
 | `{date}` | UTC date `YYYYMMDD` |
 | `{datetime}` | UTC timestamp `YYYYMMDDHHMMSS` |
+| `{run_number}` | GitHub Actions run number (`$GITHUB_RUN_NUMBER`) |
 
 ## Outputs
 | Output | Description |
@@ -72,7 +73,7 @@ jobs:
 ## Custom Format
 ```yaml
 with:
-  format: "{base}-{date}-{sha7}"
+  format: "{base}-{date}-{run_number}-{sha7}"
 ```
 
 ## Missing File (Tolerant)
