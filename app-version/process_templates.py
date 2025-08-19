@@ -11,22 +11,28 @@ import re
 from pathlib import Path
 
 
-def replace_env_vars(content):
+_ENV_VAR_PATTERN = re.compile(r'\$\{([^}]+)\}|\$([a-zA-Z0-9_]+)')
+
+
+def _resolve_env_var(match: re.Match) -> str:
+    """Internal helper: return environment value or empty string."""
+    var_name = match.group(1) or match.group(2)
+    return os.environ.get(var_name, '')
+
+
+def replace_env_vars(content: str) -> str:
+    """Backward compatible wrapper returning only processed content (deprecated for counting)."""
+    return _ENV_VAR_PATTERN.sub(_resolve_env_var, content)
+
+
+def replace_env_vars_with_count(content: str):
+    """Replace environment variables and return (processed_content, replacements_count).
+
+    Counts every occurrence of patterns `${VAR}` or `$VAR` regardless of whether
+    the variable is set. Unset variables still count as a replacement (value becomes empty).
     """
-    Replace environment variables in content with their values.
-    Supports both ${VAR} and $VAR formats.
-    """
-    # Pattern to match environment variables like ${VAR} or $VAR
-    pattern = re.compile(r'\$\{([^}]+)\}|\$([a-zA-Z0-9_]+)')
-    
-    def replace_var(match):
-        # Get the variable name, either from group 1 ${VAR} or group 2 $VAR
-        var_name = match.group(1) or match.group(2)
-        # Return the environment variable value or empty string if not found
-        return os.environ.get(var_name, '')
-    
-    # Replace all occurrences of env vars
-    return pattern.sub(replace_var, content)
+    processed, count = _ENV_VAR_PATTERN.subn(_resolve_env_var, content)
+    return processed, count
 
 
 def process_files(file_pattern):
@@ -46,19 +52,12 @@ def process_files(file_pattern):
     for file_path in files:
         try:
             print(f"Processing: {file_path}")
-            
-            # Read file content
             with open(file_path, 'r') as f:
                 content = f.read()
-            
-            # Replace environment variables
-            processed_content = replace_env_vars(content)
-            
-            # Write back to file
+            processed_content, count = replace_env_vars_with_count(content)
             with open(file_path, 'w') as f:
                 f.write(processed_content)
-                
-            print(f" -> Processed: {file_path}")
+            print(f" -> Processed: {file_path} (replacements: {count})")
         except Exception as e:
             print(f"Error processing {file_path}: {str(e)}")
 
@@ -91,14 +90,18 @@ if __name__ == "__main__":
         sys.exit(0)
 
     print(f"Total unique files to process: {len(all_files)}")
+    total_replacements = 0
     for file_path in all_files:
         try:
             print(f"Processing: {file_path}")
             with open(file_path, 'r') as f:
                 content = f.read()
-            processed_content = replace_env_vars(content)
+            processed_content, count = replace_env_vars_with_count(content)
             with open(file_path, 'w') as f:
                 f.write(processed_content)
-            print(f" -> Processed: {file_path}")
+            total_replacements += count
+            print(f" -> Processed: {file_path} (replacements: {count})")
         except Exception as e:
             print(f"Error processing {file_path}: {str(e)}")
+
+    print(f"Total replacements across all files: {total_replacements}")
