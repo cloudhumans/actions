@@ -1,69 +1,51 @@
-# CloudHumans Reusable GitHub Actions
+# CloudHumans GitHub Actions
 
-Monorepo containing reusable GitHub Actions for the CloudHumans organization. Each action lives in its own subdirectory at the repository root and is versioned via tags (`v1`, `v2`, etc.).
+Reusable composite actions collected in one repository. Each action lives in its own folder and is consumed via a tag (e.g. `@v1`).
 
-## Goal
-Standardize repeated pipeline logic (versioning, template processing, etc.) to reduce boilerplate and the risk of divergence across repositories.
-
-## Structure
-
+## Repository Layout
 ```
-actions/
-  app-version/        # Action that generates APP_VERSION and (optionally) processes templates
-  .github/workflows/  # Automated tests for the actions
-  README.md           # This file
+app-version/         # APP_VERSION computation + optional template var expansion
+.github/workflows/   # CI tests for the actions
 ```
 
-Each action directory contains:
-- `action.yml` (composite action definition)
-- `README.md` (action‑specific docs)
-- Helper scripts (if any)
+Every action folder contains:
+`action.yml` · `README.md` · optional helper scripts.
 
-## Available Actions
+## Actions
+| Action | Purpose |
+|--------|---------|
+| app-version | Build a version string from a file/override + commit metadata; can env‑substitute templates. |
 
-| Action | Path | Description |
-|--------|------|-------------|
-| app-version | `app-version/` | Computes a version from file/override + commit metadata and optionally expands variables inside templates. |
-
-## How to Use
-
-Reference an action with `uses: cloudhumans/actions/<folder>@v1` after publishing the tag:
-
+## Quick Use
 ```yaml
-- name: Compute version
-  uses: cloudhumans/actions/app-version@v1
+- uses: cloudhumans/actions/app-version@v1
   with:
     version_file: version
     format: "{base}-{sha7}"
 ```
 
-## Development Workflow
+## Development
+1. Implement / update action.
+2. Add or adjust tests in `.github/workflows`.
+3. PR & merge.
+4. Tag (or move major tag): `git tag v1 && git push origin v1 --force` (only when updating the major line).
 
-1. Add or edit an action in a new/existing directory.
-2. Create / update tests under `.github/workflows/*` ensuring minimal coverage (happy path + edge cases).
-3. Open a PR.
-4. After merge: create/update the major tag (`git tag v1 && git push origin v1`).
+## Versioning Policy
+Semantic when practical. Breaking change ⇒ new major tag (`v2`). Keep major tag pointing to latest stable.
 
-## Versioning
+## Guidelines
+Small, dependency‑light, fast (<1m CI). Fail fast with clear `::error` messages. Document inputs/outputs succinctly.
 
-Follow SemVer whenever possible. When introducing breaking changes, bump the major tag (`v2`). Keep the major tag pointing to the latest stable minor/patch.
-
-## Best Practices
-- Avoid unnecessary dependencies (prefer pure composite actions using simple bash/python).
-- Clear, documented outputs.
-- Fail fast with meaningful `::error` messages.
-- Keep tests fast (< 1 min) for continuous feedback.
-
-## Roadmap
-- Standardized Docker build/publish action
-- Manifest validation action
-- Automatic semver bump action
+## Roadmap (short list)
+- Docker build/publish
+- Manifest validation
+- Automatic semver bump
 
 ## Contributing
-PRs and issues are welcome. Clearly describe motivation and impact.
+PRs / issues welcome. State motivation + impact.
 
-## Language Policy
-All documentation, commit messages, code comments, identifiers, and future additions must be written in English only. This keeps the codebase consistent and maximizes tooling (e.g. Copilot) effectiveness.
+## Language
+English only across docs, code, and commits.
 
 ---
 CloudHumans Engineering
